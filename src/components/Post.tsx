@@ -1,15 +1,30 @@
-/* eslint-disable react/jsx-key */
-/* eslint-disable react/prop-types */
-import { Comment } from './Comments'
-import { Avatar } from './Avatar'
+import { Comment } from './Comments.tsx'
+import { Avatar } from './Avatar.tsx'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 import styles from './Post.module.css'
-import { useState } from 'react'
+import { ChangeEvent, FormEvent, InvalidEvent, useState } from 'react'
 
-export function Post({ author, publishedAt, content }) {
-  const [comments, setComments] = useState([])
+interface Author {
+  name: string
+  role: string
+  avatarUrl: string
+}
+
+interface Content {
+  type: string
+  content: string
+}
+
+interface PostProps {
+  author: Author
+  publishedAt: Date
+  content: Content[]
+}
+
+export function Post({ author, publishedAt, content }: PostProps) {
+  const [comments, setComments] = useState<string[]>([])
   const [newCommentText, setNewCommentText] = useState('')
 
   const publishedDateFormatted = format(
@@ -25,15 +40,29 @@ export function Post({ author, publishedAt, content }) {
     addSuffix: true,
   })
 
-  function handleCreateNewComment() {
+  function handleCreateNewComment(event: FormEvent) {
     event.preventDefault()
     setComments([...comments, newCommentText])
     setNewCommentText('')
   }
 
-  function handleNewCommentChange() {
+  function handleNewCommentChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    event.target.setCustomValidity('')
     setNewCommentText(event.target.value)
   }
+
+  function deleteComment(commentToDelete: string) {
+    const commentsWithoutDeletedOne = comments.filter(
+      (comment) => comment !== commentToDelete
+    )
+    setComments(commentsWithoutDeletedOne)
+  }
+
+  function handleNewCommentInvalid(event: InvalidEvent<HTMLTextAreaElement>) {
+    event.target.setCustomValidity('Esse campo é obrigatório!')
+  }
+
+  const isNewCommentEmpty = newCommentText.length === 0
 
   return (
     <article className={styles.post}>
@@ -56,10 +85,10 @@ export function Post({ author, publishedAt, content }) {
       <div className={styles.content}>
         {content.map((item) => {
           if (item.type === 'paragraph') {
-            return <p>{item.content}</p>
+            return <p key={item.content}>{item.content}</p>
           } else if (item.type === 'link') {
             return (
-              <p>
+              <p key={item.content}>
                 <a href="#">{item.content}</a>
               </p>
             )
@@ -74,15 +103,23 @@ export function Post({ author, publishedAt, content }) {
           value={newCommentText}
           onChange={handleNewCommentChange}
           placeholder="Deixe um comentário"
+          onInvalid={handleNewCommentInvalid}
+          required
         />
         <footer>
-          <button type="submit">Publicar</button>
+          <button type="submit" disabled={isNewCommentEmpty}>
+            Publicar
+          </button>
         </footer>
       </form>
 
       <div className={styles.commentList}>
         {comments.map((comment) => (
-          <Comment content={comment} />
+          <Comment
+            key={comment}
+            content={comment}
+            onDeleteComment={deleteComment}
+          />
         ))}
       </div>
     </article>
